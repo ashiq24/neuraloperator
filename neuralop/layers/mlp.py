@@ -49,13 +49,22 @@ class MLP(nn.Module):
         self.fcs = nn.ModuleList()
         for i in range(n_layers):
             if i == 0 and i == (n_layers - 1):
-                self.fcs.append(Conv(self.in_channels, self.out_channels, 1))
+                self.fcs.append( nn.Sequential(
+                    Conv(self.in_channels, self.out_channels, 1),
+                    nn.InstanceNorm2d(self.out_channels, affine=True)
+                )
+                               )
             elif i == 0:
-                self.fcs.append(Conv(self.in_channels, self.hidden_channels, 1))
+                self.fcs.append(nn.Sequential(
+                    Conv(self.in_channels, self.hidden_channels, 1), nn.InstanceNorm2d(self.hidden_channels, affine=True))
+                
+                )
             elif i == (n_layers - 1):
-                self.fcs.append(Conv(self.hidden_channels, self.out_channels, 1))
+                self.fcs.append(nn.Sequential(
+                    Conv(self.hidden_channels, self.out_channels, 1)) )
             else:
-                self.fcs.append(Conv(self.hidden_channels, self.hidden_channels, 1))
+                self.fcs.append(nn.Sequential(
+                    Conv(self.hidden_channels, self.hidden_channels, 1), nn.InstanceNorm2d(self.hidden_channels, affine=True)) )
 
     def forward(self, x):
         for i, fc in enumerate(self.fcs):

@@ -297,9 +297,11 @@ class SpectralConv(nn.Module):
         self.output_scaling_factor = output_scaling_factor
 
         if init_std == "auto":
-            init_std = 1 / (in_channels * out_channels)
+            init_std = (2 / (in_channels))**0.5
         else:
-            init_std = 0.02
+            init_std = init_std
+        
+        print("Uning initialization std",init_std)
 
         if isinstance(fixed_rank_modes, bool):
             if fixed_rank_modes:

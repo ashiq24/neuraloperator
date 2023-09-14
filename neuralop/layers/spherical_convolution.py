@@ -258,7 +258,7 @@ class SphericalConv(nn.Module):
         self.output_scaling_factor = output_scaling_factor
 
         if init_std == "auto":
-            init_std = 1 / (in_channels * out_channels)
+            init_std =  (2 / (in_channels))**0.5
         else:
             init_std = 0.02
 
@@ -422,12 +422,12 @@ class SphericalConv(nn.Module):
         batchsize, channels, height, width = x.shape
 
         if self.output_scaling_factor is not None and output_shape is None:
-            height = round(height * self.output_scaling_factor[0])
-            width = round(width * self.output_scaling_factor[1])
+            height = round(height * self.output_scaling_factor[indices][0])
+            width = round(width * self.output_scaling_factor[indices][1])
         elif output_shape is not None:
             height, width = output_shape[0], output_shape[1]
 
-        sht, isht = self._get_sht(height, width)
+        sht, isht = self._get_sht(height, width, layer=indices)
 
         out_fft = sht(x)
 

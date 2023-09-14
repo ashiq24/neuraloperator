@@ -121,6 +121,7 @@ class FNO(nn.Module):
         domain_padding_mode="one-sided",
         fft_norm="forward",
         SpectralConv=SpectralConv,
+        init_std="auto",
         **kwargs
     ):
         super().__init__()
@@ -168,7 +169,7 @@ class FNO(nn.Module):
             if isinstance(output_scaling_factor, (float, int)):
                 output_scaling_factor = [output_scaling_factor] * self.n_layers
         self.output_scaling_factor = output_scaling_factor
-
+        
         self.fno_blocks = FNOBlocks(
             in_channels=hidden_channels,
             out_channels=hidden_channels,
@@ -195,6 +196,7 @@ class FNO(nn.Module):
             joint_factorization=joint_factorization,
             SpectralConv=SpectralConv,
             n_layers=n_layers,
+            init_std=init_std,
             **kwargs
         )
 
@@ -205,7 +207,7 @@ class FNO(nn.Module):
                 in_channels=in_channels,
                 out_channels=self.hidden_channels,
                 hidden_channels=self.lifting_channels,
-                n_layers=2,
+                n_layers=3,
                 n_dim=self.n_dim,
             )
         # otherwise, make it a linear layer
@@ -214,14 +216,14 @@ class FNO(nn.Module):
                 in_channels=in_channels,
                 out_channels=self.hidden_channels,
                 hidden_channels=self.hidden_channels,
-                n_layers=1,
+                n_layers=3,
                 n_dim=self.n_dim,
             )
         self.projection = MLP(
             in_channels=self.hidden_channels,
             out_channels=out_channels,
             hidden_channels=self.projection_channels,
-            n_layers=2,
+            n_layers=3,
             n_dim=self.n_dim,
             non_linearity=non_linearity,
         )
@@ -229,12 +231,18 @@ class FNO(nn.Module):
     def forward(self, x):
         """TFNO's forward pass"""
         x = self.lifting(x)
-
+        output_shape = (x.shape[-2], x.shape[-1])
+        
         if self.domain_padding is not None:
             x = self.domain_padding.pad(x)
 
         for layer_idx in range(self.n_layers):
-            x = self.fno_blocks(x, layer_idx)
+            
+            if layer_idx == self.n_layers -1:
+                cur_output = output_shape
+            else:
+                cur_output = None
+            x = self.fno_blocks(x, layer_idx, output_shape=cur_output)
 
         if self.domain_padding is not None:
             x = self.domain_padding.unpad(x)

@@ -38,6 +38,7 @@ class FNOBlocks(nn.Module):
         implementation="factorized",
         decomposition_kwargs=dict(),
         fft_norm="forward",
+        init_std="auto",
         **kwargs,
     ):
         super().__init__()
@@ -96,6 +97,7 @@ class FNOBlocks(nn.Module):
             decomposition_kwargs=decomposition_kwargs,
             joint_factorization=joint_factorization,
             n_layers=n_layers,
+            init_std=init_std,
         )
 
         self.fno_skips = nn.ModuleList(
@@ -141,7 +143,7 @@ class FNOBlocks(nn.Module):
             self.norm = nn.ModuleList(
                 [
                     getattr(nn, f"InstanceNorm{self.n_dim}d")(
-                        num_features=self.out_channels
+                        num_features=self.out_channels, affine=True
                     )
                     for _ in range(n_layers * self.n_norms)
                 ]
