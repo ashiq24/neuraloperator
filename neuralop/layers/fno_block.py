@@ -203,7 +203,7 @@ class FNOBlocks(nn.Module):
 
         if self.fno_skip == 'conv' and self.output_scaling_factor[index][0]<1:
             x_skip_fno_input = resample(
-                x_skip_fno,
+                x,
                 self.output_scaling_factor[index],
                 list(range(-len(self.output_scaling_factor[index]), 0)),
                 output_shape=output_shape,
