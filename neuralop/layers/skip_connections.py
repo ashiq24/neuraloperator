@@ -97,8 +97,8 @@ class ConvSkip(nn.Module):
     def __init__(self, in_features, out_features,kernel_size,\
                     output_scaling_factor,bias=True,n_dim=2,padding_mode='circular'):
         super().__init__()
-        self.in_channels = in_channels
-        self.out_channels = out_channels
+        self.in_channels = in_features
+        self.out_channels = out_features
         self.kernel_size = 2*(kernel_size//2) + 1
         if output_scaling_factor is None:
             output_scaling_factor = [1]*n_dim
