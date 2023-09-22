@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-
+from .resample import resample
 
 def skip_connection(
     in_features, out_features, n_dim=2, bias=False, skip_type="soft-gating", output_scaling_factor=None, kernel_size=11,
@@ -104,7 +104,10 @@ class ConvSkip(nn.Module):
             output_scaling_factor = [1]*n_dim
         elif isinstance(output_scaling_factor, (float, int)):
             output_scaling_factor = [float(self.output_scaling_factor)] * n_dim
-        self.stride = [int(i) for i in output_scaling_factor]
+
+        self.output_scaling_factor = output_scaling_factor
+
+        self.stride = [max(int(i),1) for i in output_scaling_factor]
         self.padding = self.kernel_size//2
         self.padding_mode = padding_mode
 
