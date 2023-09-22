@@ -3,7 +3,7 @@ from torch import nn
 
 
 def skip_connection(
-    in_features, out_features, n_dim=2, bias=False, skip_type="soft-gating", output_scale_factor=None, kernel_size=11,
+    in_features, out_features, n_dim=2, bias=False, skip_type="soft-gating", output_scaling_factor=None, kernel_size=11,
 ):
     """A wrapper for several types of skip connections.
     Returns an nn.Module skip connections, one of  {'identity', 'linear', soft-gating'}
