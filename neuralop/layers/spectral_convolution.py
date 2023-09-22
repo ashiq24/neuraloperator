@@ -297,7 +297,7 @@ class SpectralConv(nn.Module):
         self.output_scaling_factor = output_scaling_factor
 
         if init_std == "auto":
-            init_std = (2 / (in_channels))**0.5
+            init_std = (1 / (in_channels*n_modes[-1]*n_modes[-2]))**(0.5)
         else:
             init_std = init_std
         
@@ -355,7 +355,14 @@ class SpectralConv(nn.Module):
                 ]
             )
             for w in self.weight:
+                x = torch.linspace(1, weight_shape[-2], steps=weight_shape[-2])
+                y = torch.linspace(1, weight_shape[-1],  steps=weight_shape[-1])
+                gx, gy = torch.meshgrid(x, y, indexing='ij')
+                factor = gx + gy
                 w.normal_(0, init_std)
+#                 w = w * factor[None, None,:,:]
+#                 print(w)
+
         self._contract = get_contract_fun(
             self.weight[0], implementation=implementation, separable=separable
         )
