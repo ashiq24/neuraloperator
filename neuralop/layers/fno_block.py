@@ -39,6 +39,7 @@ class FNOBlocks(nn.Module):
         decomposition_kwargs=dict(),
         fft_norm="forward",
         init_std="auto",
+        kernel_size=None,
         **kwargs,
     ):
         super().__init__()
