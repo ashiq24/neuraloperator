@@ -3,7 +3,7 @@ from torch import nn
 
 
 def skip_connection(
-    in_features, out_features, n_dim=2, bias=False, skip_type="soft-gating"
+    in_features, out_features, n_dim=2, bias=False, skip_type="soft-gating", output_scale_factor=None, kernel_size=11,
 ):
     """A wrapper for several types of skip connections.
     Returns an nn.Module skip connections, one of  {'identity', 'linear', soft-gating'}
@@ -43,6 +43,9 @@ def skip_connection(
         )
     elif skip_type.lower() == "identity":
         return nn.Identity()
+    elif skip_type.lower() == "conv":
+        return ConvSkip(in_features, out_features,kernel_size=kernel_size,\
+                    output_scaling_factor=output_scaling_factor,bias=bias,n_dim=n_dim)
     else:
         raise ValueError(
             f"Got skip-connection type={skip_type}, expected one of"
@@ -89,3 +92,26 @@ class SoftGating(nn.Module):
             return self.weight * x + self.bias
         else:
             return self.weight * x
+
+def  ConvSkip(nn.Module):
+    def __init__(self, in_features, out_features,kernel_size,\
+                    output_scaling_factor,bias=True,n_dim=2,padding_mode='circular'):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = 2*(kernel_size//2) + 1
+        if output_scaling_factor is None:
+            output_scaling_factor = [1]*n_dim
+        elif isinstance(output_scaling_factor, (float, int)):
+            output_scaling_factor = [float(self.output_scaling_factor)] * n_dim
+        self.stride = [int(i) for i in output_scaling_factor]
+        self.padding = self.kernel_size//2
+        self.padding_mode = padding_mode
+
+        self.conv = nn.Conv2d(self.in_channels,self.out_channels,kernel_size=self.kernel_size,\
+                            padding=self.padding,stride=self.stride,padding_mode=self.padding_mode, bias=bias)
+    
+    def forward(self, x):
+        return self.conv(x)
+
+

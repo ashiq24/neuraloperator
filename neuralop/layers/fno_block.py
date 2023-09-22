@@ -103,9 +103,10 @@ class FNOBlocks(nn.Module):
         self.fno_skips = nn.ModuleList(
             [
                 skip_connection(
-                    self.in_channels, self.out_channels, skip_type=fno_skip, n_dim=self.n_dim
+                    self.in_channels, self.out_channels, skip_type=fno_skip, n_dim=self.n_dim,\
+                     kernel_size=kernel_size,output_scale_factor=self.output_scaling_factor[i]
                 )
-                for _ in range(n_layers)
+                for i in range(n_layers)
             ]
         )
 
