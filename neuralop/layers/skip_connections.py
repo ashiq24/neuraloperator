@@ -93,7 +93,7 @@ class SoftGating(nn.Module):
         else:
             return self.weight * x
 
-Class  ConvSkip(nn.Module):
+class ConvSkip(nn.Module):
     def __init__(self, in_features, out_features,kernel_size,\
                     output_scaling_factor,bias=True,n_dim=2,padding_mode='circular'):
         super().__init__()
