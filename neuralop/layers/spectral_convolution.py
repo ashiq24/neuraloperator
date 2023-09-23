@@ -475,7 +475,7 @@ class SpectralConv(nn.Module):
         if self.output_scaling_factor is not None and output_shape is None:
             mode_sizes = tuple(
                 [
-                    round(s * r)
+                    int(s * r)
                     for (s, r) in zip(mode_sizes, self.output_scaling_factor[indices])
                 ]
             )
