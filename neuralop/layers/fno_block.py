@@ -208,7 +208,7 @@ class FNOBlocks(nn.Module):
                 list(range(-len(self.output_scaling_factor[index]), 0)),
                 output_shape=output_shape,
             )
-            print("at", index, "resampling", x_skip_fno_input.shape, x.shape )
+            print("at", index, "resampling", x_skip_fno_input.shape, x.shape, self.output_scaling_factor[index] )
         else:
             x_skip_fno_input = x.clone()
 
