@@ -208,7 +208,7 @@ class FNOBlocks(nn.Module):
                 list(range(-len(self.output_scaling_factor[index]), 0)),
                 output_shape=output_shape,
             )
-            print("at", index, "resampling", x_skip_fno_input.shape, x.shape, self.output_scaling_factor[index] )
+            #print("at", index, "resampling", x_skip_fno_input.shape, x.shape, self.output_scaling_factor[index] )
         else:
             x_skip_fno_input = x.clone()
 
@@ -246,8 +246,8 @@ class FNOBlocks(nn.Module):
         if not self.preactivation and self.norm is not None:
             x_fno = self.norm[self.n_norms * index](x_fno)
 
-        print("layer ", index)
-        print(x_fno.shape, x_skip_fno.shape)
+        #print("layer ", index)
+        #print(x_fno.shape, x_skip_fno.shape)
         x = x_fno + x_skip_fno
 
         if (
