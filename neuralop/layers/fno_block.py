@@ -214,7 +214,8 @@ class FNOBlocks(nn.Module):
 
         x_skip_fno = self.fno_skips[index](x_skip_fno_input)
 
-        if self.convs.output_scaling_factor is not None and self.fno_skip!='conv':
+        if self.convs.output_scaling_factor is not None 
+            and (self.fno_skip!='conv' and self.output_scaling_factor[index][0]<1):
             # x_skip_fno = resample(
             #     x_skip_fno,
             #     self.convs.output_scaling_factor[index],

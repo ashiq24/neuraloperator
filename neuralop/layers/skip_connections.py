@@ -107,7 +107,7 @@ class ConvSkip(nn.Module):
 
         self.output_scaling_factor = output_scaling_factor
 
-        self.stride = [max(int(1/i),1) for i in output_scaling_factor]
+        self.stride = 1 #[max(int(1/i),1) for i in output_scaling_factor]
         self.padding = self.kernel_size//2
         self.padding_mode = padding_mode
 

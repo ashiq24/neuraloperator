@@ -475,7 +475,7 @@ class SpectralConv(nn.Module):
         if self.output_scaling_factor is not None and output_shape is None:
             mode_sizes = tuple(
                 [
-                    int(s * r)
+                    round(s * r)
                     for (s, r) in zip(mode_sizes, self.output_scaling_factor[indices])
                 ]
             )
@@ -483,7 +483,6 @@ class SpectralConv(nn.Module):
         if output_shape is not None:
             mode_sizes = output_shape
 
-        print(mode_sizes)
         x = torch.fft.irfftn(out_fft, s=mode_sizes, norm=self.fft_norm)
 
         if self.bias is not None:
