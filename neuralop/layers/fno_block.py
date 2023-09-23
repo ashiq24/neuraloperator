@@ -245,7 +245,7 @@ class FNOBlocks(nn.Module):
         if not self.preactivation and self.norm is not None:
             x_fno = self.norm[self.n_norms * index](x_fno)
 
-        print("layer ", i)
+        print("layer ", index)
         print(x_fno.shape, x_skip_fno.shape)
         x = x_fno + x_skip_fno
 
