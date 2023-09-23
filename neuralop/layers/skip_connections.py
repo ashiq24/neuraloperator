@@ -95,7 +95,7 @@ class SoftGating(nn.Module):
 
 class ConvSkip(nn.Module):
     def __init__(self, in_features, out_features,kernel_size,\
-                    output_scaling_factor,bias=True,n_dim=2,padding_mode='circular'):
+                    output_scaling_factor,bias=True,n_dim=2,padding_mode='constant'):
         super().__init__()
         self.in_channels = in_features
         self.out_channels = out_features
