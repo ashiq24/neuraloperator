@@ -201,7 +201,7 @@ class FNOBlocks(nn.Module):
             if self.norm is not None:
                 x = self.norm[self.n_norms * index](x)
 
-        if self.fno_skip == 'conv' and self.output_scaling_factor[index][0]<1:
+        if self.fno_skip == 'conv' and self.output_scaling_factor[index][0]>1:
             x_skip_fno_input = resample(
                 x,
                 self.output_scaling_factor[index],
