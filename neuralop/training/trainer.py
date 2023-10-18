@@ -3,6 +3,7 @@ from torch.cuda import amp
 from timeit import default_timer
 import sys 
 import wandb
+import pathlib
 
 import neuralop.mpu.comm as comm
 
@@ -13,7 +14,6 @@ class Trainer:
     def __init__(self, *, 
                  model, 
                  n_epochs, 
-                 output_field_indices=None, 
                  wandb_log=True, 
                  device=None, 
                  amp_autocast=False, 
@@ -21,6 +21,7 @@ class Trainer:
                  log_test_interval=1, 
                  log_output=False, 
                  use_distributed=False, 
+                 checkpoint_to_load: pathlib.Path=None,
                  verbose=True):
         """
         A general Trainer class to train neural-operators on given datasets
@@ -29,9 +30,6 @@ class Trainer:
         ----------
         model : nn.Module
         n_epochs : int
-        output_field_indices : dict | None
-            if a model has multiple output fields, this maps to
-            the indices of a model's output associated with each field. 
         wandb_log : bool, default is True
         device : torch.device
         amp_autocast : bool, default is False
@@ -69,14 +67,11 @@ class Trainer:
                  use_distributed=use_distributed, 
                  verbose=verbose)
 
+        if checkpoint_to_load:
+            self.model.load_state_dict(torch.load(checkpoint_to_load))
+
         self.model = model
         self.n_epochs = n_epochs
-
-        if not output_field_indices:
-            self.output_field_indices = {'':None}
-        else:
-            self.output_field_indices = output_field_indices
-        self.output_fields = list(self.output_field_indices.keys())
 
         self.wandb_log = wandb_log
         self.log_test_interval = log_test_interval
