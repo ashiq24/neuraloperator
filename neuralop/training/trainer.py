@@ -1,14 +1,12 @@
 import torch
 from torch.cuda import amp
 from timeit import default_timer
-import sys 
-import wandb
 import pathlib
 
-import neuralop.mpu.comm as comm
-
-from .losses import LpLoss
 from .callbacks import PipelineCallback
+import neuralop.mpu.comm as comm
+from neuralop.losses import LpLoss
+
 
 class Trainer:
     def __init__(self, *, 
@@ -16,13 +14,13 @@ class Trainer:
                  n_epochs, 
                  wandb_log=True, 
                  device=None, 
-                 amp_autocast=False, 
+                 amp_autocast=False,
+                 data_processor=None,
                  callbacks = None,
                  log_test_interval=1, 
                  log_output=False, 
                  use_distributed=False, 
-                 checkpoint_to_load: pathlib.Path=None,
-                 verbose=True):
+                 verbose=False):
         """
         A general Trainer class to train neural-operators on given datasets
 
@@ -33,13 +31,16 @@ class Trainer:
         wandb_log : bool, default is True
         device : torch.device
         amp_autocast : bool, default is False
+        data_processor : class to transform data, default is None
+            if not None, data from the loaders is transform first with data_processor.preprocess,
+            then after getting an output from the model, that is transformed with data_processor.postprocess.
         log_test_interval : int, default is 1
             how frequently to print updates
         log_output : bool, default is False
             if True, and if wandb_log is also True, log output images to wandb
         use_distributed : bool, default is False
             whether to use DDP
-        verbose : bool, default is True
+        verbose : bool, default is False
         """
 
         if callbacks:
@@ -67,9 +68,6 @@ class Trainer:
                  use_distributed=use_distributed, 
                  verbose=verbose)
 
-        if checkpoint_to_load:
-            self.model.load_state_dict(torch.load(checkpoint_to_load))
-
         self.model = model
         self.n_epochs = n_epochs
 
@@ -80,6 +78,7 @@ class Trainer:
         self.use_distributed = use_distributed
         self.device = device
         self.amp_autocast = amp_autocast
+        self.data_processor = data_processor
 
         if self.callbacks:
             self.callbacks.on_init_end(model=model, 
@@ -91,7 +90,6 @@ class Trainer:
                  log_output=log_output, 
                  use_distributed=use_distributed, 
                  verbose=verbose)
-        
         
     def train(self, train_loader, test_loaders,
             optimizer, scheduler, regularizer,
@@ -107,7 +105,10 @@ class Trainer:
             optimizer to use during training
         optimizer: torch.optim.lr_scheduler
             learning rate scheduler to use during training
-        training_loss: function to use 
+        training_loss: training.losses function
+            cost function to minimize
+        eval_losses: dict[Loss]
+            dict of losses to use in self.eval()
         """
 
         if self.callbacks:
@@ -115,18 +116,15 @@ class Trainer:
                                     optimizer=optimizer, scheduler=scheduler, 
                                     regularizer=regularizer, training_loss=training_loss, 
                                     eval_losses=eval_losses)
-
+            
         if training_loss is None:
             training_loss = LpLoss(d=2)
 
         if eval_losses is None: # By default just evaluate on the training loss
             eval_losses = dict(l2=training_loss)
 
-        if self.use_distributed:
-            is_logger = (comm.get_world_rank() == 0)
-        else:
-            is_logger = True 
-        
+        errors = None
+
         for epoch in range(self.n_epochs):
 
             if self.callbacks:
@@ -143,31 +141,24 @@ class Trainer:
                 if self.callbacks:
                     self.callbacks.on_batch_start(idx=idx, sample=sample)
 
-                # Decide what to do about logging later when we decide on batch naming conventions
-                '''if epoch == 0 and idx == 0 and self.verbose and is_logger:
-                    print(f'Training on raw inputs of size {x.shape=}, {y.shape=}')'''
-
-                y = sample['y']
-
-                # load everything from the batch onto self.device if 
-                # no callback overrides default load to device
-                
-                if self.override_load_to_device:
-                    self.callbacks.on_load_to_device(sample=sample)
-                else:
-                    for k,v in sample.items():
-                        if hasattr(v, 'to'):
-                            sample[k] = v.to(self.device)
-
                 optimizer.zero_grad(set_to_none=True)
                 if regularizer:
                     regularizer.reset()
 
+                if self.data_processor is not None:
+                    sample = self.data_processor.preprocess(sample)
+                else:
+                    # load data to device if no preprocessor exists
+                    sample = {k:v.to(self.device) for k,v in sample.items() if torch.is_tensor(v)}
+
                 if self.amp_autocast:
                     with amp.autocast(enabled=True):
-                        out = self.model(**sample)
+                        out  = self.model(**sample)
                 else:
-                    out = self.model(**sample)
+                    out  = self.model(**sample)
+
+                if self.data_processor is not None:
+                    out, sample = self.data_processor.postprocess(out, sample)
 
                 if self.callbacks:
                     self.callbacks.on_before_loss(out=out)
@@ -192,13 +183,12 @@ class Trainer:
                         elif isinstance(out, dict):
                             loss += training_loss(**out, **sample)
                 
-                del out
-
                 if regularizer:
                     loss += regularizer.loss
                 
                 loss.backward()
-                
+                del out
+
                 optimizer.step()
                 train_err += loss.item()
         
@@ -228,13 +218,15 @@ class Trainer:
                 
 
                 for loader_name, loader in test_loaders.items():
-                    _ = self.evaluate(eval_losses, loader, log_prefix=loader_name)
+                    errors = self.evaluate(eval_losses, loader, log_prefix=loader_name)
 
                 if self.callbacks:
                     self.callbacks.on_val_end()
             
             if self.callbacks:
                 self.callbacks.on_epoch_end(epoch=epoch, train_err=train_err, avg_loss=avg_loss)
+
+        return errors
 
     def evaluate(self, loss_dict, data_loader,
                  log_prefix=''):
@@ -256,7 +248,7 @@ class Trainer:
         """
 
         if self.callbacks:
-            self.callbacks.on_val_epoch_start(loss_dict = loss_dict, data_loader=data_loader)
+            self.callbacks.on_val_epoch_start(log_prefix=log_prefix, loss_dict = loss_dict, data_loader=data_loader)
 
         self.model.eval()
 
@@ -265,24 +257,21 @@ class Trainer:
         n_samples = 0
         with torch.no_grad():
             for idx, sample in enumerate(data_loader):
-                
+
+                n_samples += sample['y'].size(0)
                 if self.callbacks:
                     self.callbacks.on_val_batch_start(idx=idx, sample=sample)
-                
-                y = sample['y']
-                n_samples += y.size(0)
 
-                # load everything from the batch onto self.device if 
-                # no callback overrides default load to device
-                
-                if self.override_load_to_device:
-                    self.callbacks.on_load_to_device(sample=sample)
+                if self.data_processor is not None:
+                    sample = self.data_processor.preprocess(sample)
                 else:
-                    for k,v in sample.items():
-                        if hasattr(v, 'to'):
-                            sample[k] = v.to(self.device)
-
+                    # load data to device if no preprocessor exists
+                    sample = {k:v.to(self.device) for k,v in sample.items() if torch.is_tensor(v)}
+                    
                 out = self.model(**sample)
+
+                if self.data_processor is not None:
+                    out, sample = self.data_processor.postprocess(out, sample)
 
                 if self.callbacks:
                     self.callbacks.on_before_val_loss(out=out)
@@ -295,21 +284,24 @@ class Trainer:
                             val_loss = self.callbacks.compute_training_loss(**out, **sample)
                     else:
                         if isinstance(out, torch.Tensor):
-                            val_loss = loss(out, **sample).item()
+                            val_loss = loss(out, **sample)
                         elif isinstance(out, dict):
-                            val_loss = loss(out, **sample).item()
+                            val_loss = loss(out, **sample)
+                        if val_loss.shape == ():
+                            val_loss = val_loss.item()
 
                     errors[f'{log_prefix}_{loss_name}'] += val_loss
 
                 if self.callbacks:
                     self.callbacks.on_val_batch_end()
-        
-        del y, out
-
+    
         for key in errors.keys():
             errors[key] /= n_samples
         
         if self.callbacks:
-            self.callbacks.on_val_epoch_end(errors=errors)
+            self.callbacks.on_val_epoch_end(errors=errors, sample=sample, out=out)
+        
+        del out
 
         return errors
+

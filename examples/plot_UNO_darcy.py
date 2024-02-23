@@ -14,10 +14,9 @@ import torch
 import matplotlib.pyplot as plt
 import sys
 from neuralop.models import TFNO, UNO
-from neuralop.training import OutputEncoderCallback
 from neuralop import Trainer
 from neuralop.datasets import load_darcy_flow_small
-from neuralop.utils import count_params
+from neuralop.utils import count_model_params
 from neuralop import LpLoss, H1Loss
 
 device = 'cpu'
@@ -25,7 +24,7 @@ device = 'cpu'
 
 # %%
 # Loading the Darcy Flow dataset
-train_loader, test_loaders, output_encoder = load_darcy_flow_small(
+train_loader, test_loaders, data_processor = load_darcy_flow_small(
         n_train=1000, batch_size=32, 
         test_resolutions=[16, 32], n_tests=[100, 50],
         test_batch_sizes=[32, 32],
@@ -38,7 +37,7 @@ model = UNO(3,1, hidden_channels=64, projection_channels=64,uno_out_channels = [
             horizontal_skips_map = None, n_layers = 5, domain_padding = 0.2)
 model = model.to(device)
 
-n_params = count_params(model)
+n_params = count_model_params(model)
 print(f'\nOur model has {n_params} parameters.')
 sys.stdout.flush()
 
@@ -77,7 +76,7 @@ sys.stdout.flush()
 trainer = Trainer(model=model,
                    n_epochs=20,
                   device=device,
-                  callbacks=[OutputEncoderCallback(output_encoder)],
+                  data_processor=data_processor,
                   wandb_log=False,
                   log_test_interval=3,
                   use_distributed=False,
@@ -113,6 +112,7 @@ test_samples = test_loaders[32].dataset
 fig = plt.figure(figsize=(7, 7))
 for index in range(3):
     data = test_samples[index]
+    data = data_processor.preprocess(data, batched=False)
     # Input x
     x = data['x']
     # Ground-truth
