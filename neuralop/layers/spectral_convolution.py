@@ -290,7 +290,7 @@ class SpectralConv(BaseSpectralConv):
         self.factorization = factorization
         self.n_layers = n_layers
         self.implementation = implementation
-
+        self.half_n_modes = [m for m in n_modes]
         self.output_scaling_factor: Union[
             None, List[List[float]]
         ] = validate_scaling_factor(output_scaling_factor, self.order, n_layers)
@@ -364,7 +364,7 @@ class SpectralConv(BaseSpectralConv):
             self.bias = None
 
     def _get_weight(self, index):
-        return self.weight[index]
+        return self.weight[index-1]
 
     def transform(self, x, layer_index=0, output_shape=None):
         in_shape = list(x.shape[2:])

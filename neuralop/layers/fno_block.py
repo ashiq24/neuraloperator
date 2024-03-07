@@ -77,13 +77,13 @@ class FNOBlocks(nn.Module):
         self.separable = separable
         self.preactivation = preactivation
         self.ada_in_features = ada_in_features
-
+        
         self.convs = SpectralConv(
             self.in_channels,
             self.out_channels,
             self.n_modes,
+            self.max_n_modes,
             output_scaling_factor=output_scaling_factor,
-            max_n_modes=max_n_modes,
             rank=rank,
             fixed_rank_modes=fixed_rank_modes,
             implementation=implementation,
